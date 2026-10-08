@@ -1,0 +1,28 @@
+name: Skill validation
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/validate_skill.py
+      - run: npx --yes skills@1.7.0 add . --list
+      - name: Install into a disposable Pi project
+        shell: bash
+        run: |
+          set -euo pipefail
+          skill_test_project=$(mktemp -d)
+          cd "$skill_test_project"
+          npx --yes skills@1.7.0 add "$GITHUB_WORKSPACE" --agent pi --skill cad-document-ingest --copy --yes
+          python3 "$GITHUB_WORKSPACE/scripts/validate_skill.py" "$skill_test_project/.pi/skills/cad-document-ingest"
